@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CoReAL Questionnaire Calculator — LARS · Wexner · EQ-5D-5L</title>
+<meta name="description" content="Score the LARS, Wexner, and EQ-5D-5L questionnaires used in the CoReAL collaborative postoperative follow-up." />
+<style>
+  :root {
+    --bg: #f5f7fa;
+    --panel: #ffffff;
+    --ink: #1a2533;
+    --ink-soft: #4a5a6d;
+    --muted: #7a8898;
+    --line: #e2e8ef;
+    --line-strong: #cdd6e0;
+    --brand: #1f5f8b;
+    --brand-soft: #e8f0f7;
+    --accent: #2b7a4b;
+    --warn: #c0651a;
+    --bad: #b03434;
+    --focus: #4a90c8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    background: var(--brand);
+    color: white;
+    padding: 1.5rem 1.5rem;
+    border-bottom: 4px solid #174869;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+  }
+  header .collab {
+    margin: 0.45rem 0 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
+  header .tool {
+    margin: 0.65rem 0 0;
+    font-size: 1rem;
+    font-weight: 400;
+    opacity: 0.9;
+  }
+  main {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 4rem;
+  }
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--line-strong);
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .tab {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.75rem 1.1rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--brand); }
+  .tab.active {
+    color: var(--brand);
+    border-bottom-color: var(--brand);
+    font-weight: 600;
+  }
+  .tab:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .panel {
+    display: none;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .panel.active { display: block; }
+  .panel h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.2rem;
+    color: var(--brand);
+  }
+  .panel .subtitle {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin: 0 0 1.25rem;
+  }
+  .question {
+    border-top: 1px solid var(--line);
+    padding: 1rem 0;
+  }
+  .question:first-of-type { border-top: none; padding-top: 0.25rem; }
+  .question .qtext {
+    font-weight: 500;
+    margin-bottom: 0.6rem;
+    color: var(--ink);
+  }
+  .options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .options label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: #fafbfc;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    user-select: none;
+  }
+  .options label:hover {
+    border-color: var(--brand);
+    color: var(--brand);
+  }
+  .options input[type="radio"] {
+    accent-color: var(--brand);
+    margin: 0;
+  }
+  .options input[type="radio"]:checked + span { font-weight: 600; }
+  .options label:has(input:checked) {
+    background: var(--brand-soft);
+    border-color: var(--brand);
+    color: var(--brand);
+  }
+  .result {
+    margin-top: 1.5rem;
+    padding: 1rem 1.1rem;
+    background: var(--brand-soft);
+    border: 1px solid #cfe0ec;
+    border-radius: 6px;
+  }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .result-label {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .result-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--brand);
+    font-variant-numeric: tabular-nums;
+  }
+  .interp {
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+  .interp.no { color: var(--accent); }
+  .interp.minor { color: var(--warn); }
+  .interp.major { color: var(--bad); }
+  .eq-key {
+    margin-top: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    line-height: 1.4;
+  }
+  .eq-key-dims {
+    display: block;
+    margin-top: 0.15rem;
+    color: var(--muted);
+  }
+  .actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  button.btn {
+    font-family: inherit;
+    font-size: 0.88rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--line-strong);
+    background: white;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  button.btn:hover { border-color: var(--brand); color: var(--brand); }
+  button.btn.primary {
+    background: var(--brand);
+    color: white;
+    border-color: var(--brand);
+  }
+  button.btn.primary:hover { background: #174869; border-color: #174869; color: white; }
+  button.btn:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .vas-wrap {
+    margin-top: 0.5rem;
+  }
+  .vas-wrap input[type="range"] {
+    width: 100%;
+    accent-color: var(--brand);
+  }
+  .vas-readout {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 0.25rem;
+  }
+  .vas-value {
+    font-weight: 600;
+    color: var(--brand);
+  }
+  .ref {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--line);
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .ref a { color: var(--brand); text-decoration: none; }
+  .ref a:hover { text-decoration: underline; }
+  .disclaimer {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0.75rem 1rem;
+  }
+  .disclaimer-inner {
+    background: #fff8ec;
+    border: 1px solid #f0d8a8;
+    border-left: 4px solid #c0651a;
+    color: #6e4a14;
+    padding: 0.65rem 0.9rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+  .disclaimer-inner strong { color: #5a3a0a; }
+  footer {
+    max-width: 880px;
+    margin: 1.5rem auto 0;
+    padding: 0 1rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  footer strong { color: var(--ink-soft); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: white;
+    padding: 0.6rem 1.1rem;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 50;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (max-width: 560px) {
+    header { padding: 1.1rem 1rem; }
+    header h1 { font-size: 1.2rem; }
+    header .collab { font-size: 0.78rem; letter-spacing: 0.14em; }
+    header .tool { font-size: 0.9rem; }
+    .panel { padding: 1rem; }
+    .result-value { font-size: 1.5rem; }
+    .tab { padding: 0.6rem 0.75rem; font-size: 0.88rem; }
+  }
+
+  @media print {
+    header { background: white; color: black; border: none; }
+    .tabs, .actions, footer { display: none; }
+    .panel { display: block !important; page-break-after: always; box-shadow: none; border: 1px solid #ccc; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Consensus on Reporting Anastomotic Leaks (CoReAL)</h1>
+  <p class="collab">CoReAL Collaborative</p>
+  <p class="tool">Questionnaire Calculator — LARS · Wexner · EQ-5D-5L</p>
+</header>
+
+<div class="disclaimer" role="note" aria-label="Disclaimer">
+  <div class="disclaimer-inner">
+    <strong>Notice:</strong> This tool is for documentation support only and does not replace clinical judgment. No patient data is stored or transmitted.
+  </div>
+</div>
+
+<main>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" role="tab" data-tab="lars" aria-selected="true">LARS</button>
+    <button class="tab" role="tab" data-tab="wexner" aria-selected="false">Wexner</button>
+    <button class="tab" role="tab" data-tab="eq5d" aria-selected="false">EQ-5D-5L</button>
+  </nav>
+
+  <!-- LARS -->
+  <section class="panel active" id="panel-lars" role="tabpanel">
+    <h2>LARS Score</h2>
+    <p class="subtitle">Low Anterior Resection Syndrome — bowel dysfunction after rectal surgery.</p>
+
+    <div class="question" data-name="lars-flatus">
+      <div class="qtext">1. Do you ever have occasions when you cannot control your flatus (wind)?</div>
+      <div class="options">
+        <label><input type="radio" name="lars-flatus" value="0"><span>No, never</span></label>
+        <label><input type="radio" name="lars-flatus" value="4"><span>Yes, less than once per week</span></label>
+        <label><input type="radio" name="lars-flatus" value="7"><span>Yes, at least once per week</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="lars-liquid">
+      <div class="qtext">2. Do you ever have any accidental leakage of liquid stool?</div>
+      <div class="options">
+        <label><input type="radio" name="lars-liquid" value="0"><span>No, never</span></label>
+        <label><input type="radio" name="lars-liquid" value="3"><span>Yes, less than once per week</span></label>
+        <label><input type="radio" name="lars-liquid" value="3"><span>Yes, at least once per week</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="lars-freq">
+      <div class="qtext">3. How often do you open your bowels?</div>
+      <div class="options">
+        <label><input type="radio" name="lars-freq" value="4"><span>More than 7 times per day</span></label>
+        <label><input type="radio" name="lars-freq" value="2"><span>4–7 times per day</span></label>
+        <label><input type="radio" name="lars-freq" value="0"><span>1–3 times per day</span></label>
+        <label><input type="radio" name="lars-freq" value="5"><span>Less than once per day</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="lars-cluster">
+      <div class="qtext">4. Do you ever have to open your bowels again within one hour of the last bowel opening?</div>
+      <div class="options">
+        <label><input type="radio" name="lars-cluster" value="0"><span>No, never</span></label>
+        <label><input type="radio" name="lars-cluster" value="9"><span>Yes, less than once per week</span></label>
+        <label><input type="radio" name="lars-cluster" value="11"><span>Yes, at least once per week</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="lars-urgency">
+      <div class="qtext">5. Do you ever have such a strong urge to open your bowels that you have to rush to the toilet?</div>
+      <div class="options">
+        <label><input type="radio" name="lars-urgency" value="0"><span>No, never</span></label>
+        <label><input type="radio" name="lars-urgency" value="11"><span>Yes, less than once per week</span></label>
+        <label><input type="radio" name="lars-urgency" value="16"><span>Yes, at least once per week</span></label>
+      </div>
+    </div>
+
+    <div class="result">
+      <div class="result-row">
+        <span class="result-label">Total LARS Score (0–42)</span>
+        <span class="result-value" id="lars-total">—</span>
+      </div>
+      <div class="interp" id="lars-interp"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" data-copy="lars">Copy score</button>
+      <button class="btn" data-reset="lars">Reset</button>
+    </div>
+
+    <div class="ref">
+      <strong>Reference:</strong> Emmertsen KJ, Laurberg S. Low Anterior Resection Syndrome Score: development and validation of a symptom-based scoring system for bowel dysfunction after low anterior resection for rectal cancer. <em>Ann Surg.</em> 2012;255(5):922–928.
+      <br><strong>Interpretation:</strong> 0–20 = No LARS · 21–29 = Minor LARS · 30–42 = Major LARS.
+    </div>
+  </section>
+
+  <!-- Wexner -->
+  <section class="panel" id="panel-wexner" role="tabpanel">
+    <h2>Wexner Score</h2>
+    <p class="subtitle">Cleveland Clinic Florida (CCF) Fecal Incontinence Score — Jorge &amp; Wexner Continence Grading Scale.</p>
+
+    <p style="font-size: 0.85rem; color: var(--muted); margin: 0 0 0.5rem;">
+      Frequency key: <strong>Never</strong> = never · <strong>Rarely</strong> &lt; 1/month · <strong>Sometimes</strong> &lt; 1/week, ≥ 1/month · <strong>Usually</strong> &lt; 1/day, ≥ 1/week · <strong>Always</strong> ≥ 1/day.
+    </p>
+
+    <div class="question" data-name="w-solid">
+      <div class="qtext">1. Incontinence for solid stool</div>
+      <div class="options">
+        <label><input type="radio" name="w-solid" value="0"><span>Never (0)</span></label>
+        <label><input type="radio" name="w-solid" value="1"><span>Rarely (1)</span></label>
+        <label><input type="radio" name="w-solid" value="2"><span>Sometimes (2)</span></label>
+        <label><input type="radio" name="w-solid" value="3"><span>Usually (3)</span></label>
+        <label><input type="radio" name="w-solid" value="4"><span>Always (4)</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="w-liquid">
+      <div class="qtext">2. Incontinence for liquid stool</div>
+      <div class="options">
+        <label><input type="radio" name="w-liquid" value="0"><span>Never (0)</span></label>
+        <label><input type="radio" name="w-liquid" value="1"><span>Rarely (1)</span></label>
+        <label><input type="radio" name="w-liquid" value="2"><span>Sometimes (2)</span></label>
+        <label><input type="radio" name="w-liquid" value="3"><span>Usually (3)</span></label>
+        <label><input type="radio" name="w-liquid" value="4"><span>Always (4)</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="w-gas">
+      <div class="qtext">3. Incontinence for gas</div>
+      <div class="options">
+        <label><input type="radio" name="w-gas" value="0"><span>Never (0)</span></label>
+        <label><input type="radio" name="w-gas" value="1"><span>Rarely (1)</span></label>
+        <label><input type="radio" name="w-gas" value="2"><span>Sometimes (2)</span></label>
+        <label><input type="radio" name="w-gas" value="3"><span>Usually (3)</span></label>
+        <label><input type="radio" name="w-gas" value="4"><span>Always (4)</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="w-pad">
+      <div class="qtext">4. Wears pad</div>
+      <div class="options">
+        <label><input type="radio" name="w-pad" value="0"><span>Never (0)</span></label>
+        <label><input type="radio" name="w-pad" value="1"><span>Rarely (1)</span></label>
+        <label><input type="radio" name="w-pad" value="2"><span>Sometimes (2)</span></label>
+        <label><input type="radio" name="w-pad" value="3"><span>Usually (3)</span></label>
+        <label><input type="radio" name="w-pad" value="4"><span>Always (4)</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="w-life">
+      <div class="qtext">5. Lifestyle alteration</div>
+      <div class="options">
+        <label><input type="radio" name="w-life" value="0"><span>Never (0)</span></label>
+        <label><input type="radio" name="w-life" value="1"><span>Rarely (1)</span></label>
+        <label><input type="radio" name="w-life" value="2"><span>Sometimes (2)</span></label>
+        <label><input type="radio" name="w-life" value="3"><span>Usually (3)</span></label>
+        <label><input type="radio" name="w-life" value="4"><span>Always (4)</span></label>
+      </div>
+    </div>
+
+    <div class="result">
+      <div class="result-row">
+        <span class="result-label">Total Wexner Score (0–20)</span>
+        <span class="result-value" id="w-total">—</span>
+      </div>
+      <div class="interp" id="w-interp"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" data-copy="wexner">Copy score</button>
+      <button class="btn" data-reset="wexner">Reset</button>
+    </div>
+
+    <div class="ref">
+      <strong>Reference:</strong> Jorge JMN, Wexner SD. Etiology and management of fecal incontinence. <em>Dis Colon Rectum.</em> 1993;36(1):77–97.
+      <br><strong>Interpretation:</strong> 0 = perfect continence · 20 = complete incontinence. Higher scores indicate worse continence.
+    </div>
+  </section>
+
+  <!-- EQ-5D-5L -->
+  <section class="panel" id="panel-eq5d" role="tabpanel">
+    <h2>EQ-5D-5L</h2>
+    <p class="subtitle">EuroQol 5-Dimension, 5-Level health-related quality of life instrument.</p>
+
+    <div class="question" data-name="eq-mobility">
+      <div class="qtext">Mobility</div>
+      <div class="options">
+        <label><input type="radio" name="eq-mobility" value="1"><span>No problems walking about</span></label>
+        <label><input type="radio" name="eq-mobility" value="2"><span>Slight problems</span></label>
+        <label><input type="radio" name="eq-mobility" value="3"><span>Moderate problems</span></label>
+        <label><input type="radio" name="eq-mobility" value="4"><span>Severe problems</span></label>
+        <label><input type="radio" name="eq-mobility" value="5"><span>Unable to walk about</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="eq-selfcare">
+      <div class="qtext">Self-Care</div>
+      <div class="options">
+        <label><input type="radio" name="eq-selfcare" value="1"><span>No problems washing or dressing</span></label>
+        <label><input type="radio" name="eq-selfcare" value="2"><span>Slight problems</span></label>
+        <label><input type="radio" name="eq-selfcare" value="3"><span>Moderate problems</span></label>
+        <label><input type="radio" name="eq-selfcare" value="4"><span>Severe problems</span></label>
+        <label><input type="radio" name="eq-selfcare" value="5"><span>Unable to wash or dress</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="eq-usual">
+      <div class="qtext">Usual Activities <span style="color:var(--muted); font-weight:normal; font-size:0.85em;">(work, study, housework, family, leisure)</span></div>
+      <div class="options">
+        <label><input type="radio" name="eq-usual" value="1"><span>No problems</span></label>
+        <label><input type="radio" name="eq-usual" value="2"><span>Slight problems</span></label>
+        <label><input type="radio" name="eq-usual" value="3"><span>Moderate problems</span></label>
+        <label><input type="radio" name="eq-usual" value="4"><span>Severe problems</span></label>
+        <label><input type="radio" name="eq-usual" value="5"><span>Unable to do usual activities</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="eq-pain">
+      <div class="qtext">Pain / Discomfort</div>
+      <div class="options">
+        <label><input type="radio" name="eq-pain" value="1"><span>None</span></label>
+        <label><input type="radio" name="eq-pain" value="2"><span>Slight</span></label>
+        <label><input type="radio" name="eq-pain" value="3"><span>Moderate</span></label>
+        <label><input type="radio" name="eq-pain" value="4"><span>Severe</span></label>
+        <label><input type="radio" name="eq-pain" value="5"><span>Extreme</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="eq-anxiety">
+      <div class="qtext">Anxiety / Depression</div>
+      <div class="options">
+        <label><input type="radio" name="eq-anxiety" value="1"><span>Not anxious or depressed</span></label>
+        <label><input type="radio" name="eq-anxiety" value="2"><span>Slightly</span></label>
+        <label><input type="radio" name="eq-anxiety" value="3"><span>Moderately</span></label>
+        <label><input type="radio" name="eq-anxiety" value="4"><span>Severely</span></label>
+        <label><input type="radio" name="eq-anxiety" value="5"><span>Extremely</span></label>
+      </div>
+    </div>
+
+    <div class="question" data-name="eq-vas">
+      <div class="qtext">EQ-VAS — Patient's self-rated health today (0 = worst, 100 = best)</div>
+      <div class="vas-wrap">
+        <input type="range" id="eq-vas" min="0" max="100" step="1" value="50" />
+        <div class="vas-readout">
+          <span>0 — worst health</span>
+          <span class="vas-value" id="eq-vas-value">50</span>
+          <span>100 — best health</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="result">
+      <div class="result-row">
+        <span class="result-label">EQ-5D-5L Health State</span>
+        <span class="result-value" id="eq-profile" style="letter-spacing: 0.05em;">—</span>
+      </div>
+      <div class="eq-key">
+        Each digit = patient's level (1–5) on one dimension, in order:
+        <span class="eq-key-dims">Mobility · Self-Care · Usual Activities · Pain/Discomfort · Anxiety/Depression</span>
+      </div>
+      <div class="result-row" style="margin-top:0.75rem;">
+        <span class="result-label">Sum of Levels (5–25)</span>
+        <span class="result-value" id="eq-sum" style="font-size:1.2rem;">—</span>
+      </div>
+      <div class="result-row" style="margin-top:0.25rem;">
+        <span class="result-label">EQ-VAS</span>
+        <span class="result-value" id="eq-vas-out" style="font-size:1.2rem;">— / 100</span>
+      </div>
+      <div class="interp" id="eq-interp"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" data-copy="eq5d">Copy result</button>
+      <button class="btn" data-reset="eq5d">Reset</button>
+    </div>
+
+    <div class="ref">
+      <strong>Reference:</strong> Herdman M, Gudex C, Lloyd A, et al. Development and preliminary testing of the new five-level version of EQ-5D (EQ-5D-5L). <em>Qual Life Res.</em> 2011;20:1727–1736.
+      <br><strong>Interpretation:</strong> The 5-digit profile (e.g., 11111 = full health) records the patient's level on each of five dimensions. A preference-weighted utility index requires a country-specific EQ-5D-5L value set, which must be licensed from the EuroQol Group.
+      <br><strong>Note:</strong> EQ-5D-5L™ is a trademark of the EuroQol Group. Registration with EuroQol is required for clinical and research use. See <a href="https://euroqol.org" target="_blank" rel="noopener">euroqol.org</a>.
+    </div>
+  </section>
+</main>
+
+<footer>
+  Built for the CoReAL Collaborative · prototype for surgeon use during postoperative follow-up
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  // ---------- Tabs ----------
+  const tabs = document.querySelectorAll('.tab');
+  const panels = document.querySelectorAll('.panel');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      tabs.forEach(t => {
+        const active = t.dataset.tab === target;
+        t.classList.toggle('active', active);
+        t.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      panels.forEach(p => {
+        p.classList.toggle('active', p.id === 'panel-' + target);
+      });
+    });
+  });
+
+  // ---------- Helpers ----------
+  function getRadioValue(name) {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? Number(el.value) : null;
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard'),
+        () => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  }
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-1000px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); showToast('Copied to clipboard'); }
+    catch (e) { showToast('Copy failed'); }
+    document.body.removeChild(ta);
+  }
+
+  // ---------- LARS ----------
+  const larsFields = ['lars-flatus', 'lars-liquid', 'lars-freq', 'lars-cluster', 'lars-urgency'];
+  function updateLARS() {
+    const vals = larsFields.map(getRadioValue);
+    const complete = vals.every(v => v !== null);
+    const total = vals.reduce((s, v) => s + (v || 0), 0);
+    const totalEl = document.getElementById('lars-total');
+    const interpEl = document.getElementById('lars-interp');
+
+    if (!complete) {
+      totalEl.textContent = total + ' (incomplete)';
+      totalEl.style.color = 'var(--muted)';
+      interpEl.textContent = `${larsFields.length - vals.filter(v => v !== null).length} question(s) remaining`;
+      interpEl.className = 'interp';
+      return;
+    }
+    totalEl.textContent = total;
+    totalEl.style.color = 'var(--brand)';
+    let label, cls;
+    if (total <= 20)       { label = 'No LARS';    cls = 'no'; }
+    else if (total <= 29)  { label = 'Minor LARS'; cls = 'minor'; }
+    else                   { label = 'Major LARS'; cls = 'major'; }
+    interpEl.textContent = label;
+    interpEl.className = 'interp ' + cls;
+  }
+  larsFields.forEach(name => {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(el => {
+      el.addEventListener('change', updateLARS);
+    });
+  });
+
+  // ---------- Wexner ----------
+  const wFields = ['w-solid', 'w-liquid', 'w-gas', 'w-pad', 'w-life'];
+  function updateWexner() {
+    const vals = wFields.map(getRadioValue);
+    const complete = vals.every(v => v !== null);
+    const total = vals.reduce((s, v) => s + (v || 0), 0);
+    const totalEl = document.getElementById('w-total');
+    const interpEl = document.getElementById('w-interp');
+
+    if (!complete) {
+      totalEl.textContent = total + ' (incomplete)';
+      totalEl.style.color = 'var(--muted)';
+      interpEl.textContent = `${wFields.length - vals.filter(v => v !== null).length} question(s) remaining`;
+      interpEl.className = 'interp';
+      return;
+    }
+    totalEl.textContent = total;
+    totalEl.style.color = 'var(--brand)';
+    let label, cls;
+    if (total === 0)      { label = 'Perfect continence';            cls = 'no'; }
+    else if (total <= 8)  { label = 'Mild incontinence symptoms';    cls = 'no'; }
+    else if (total <= 13) { label = 'Moderate symptoms';             cls = 'minor'; }
+    else if (total < 20)  { label = 'Severe symptoms';               cls = 'major'; }
+    else                  { label = 'Complete incontinence';         cls = 'major'; }
+    interpEl.textContent = label + ' (higher = worse)';
+    interpEl.className = 'interp ' + cls;
+  }
+  wFields.forEach(name => {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(el => {
+      el.addEventListener('change', updateWexner);
+    });
+  });
+
+  // ---------- EQ-5D-5L ----------
+  const eqFields = ['eq-mobility', 'eq-selfcare', 'eq-usual', 'eq-pain', 'eq-anxiety'];
+  const eqVas = document.getElementById('eq-vas');
+  const eqVasValue = document.getElementById('eq-vas-value');
+  const eqVasOut = document.getElementById('eq-vas-out');
+
+  function updateEQ() {
+    const vals = eqFields.map(getRadioValue);
+    const complete = vals.every(v => v !== null);
+    const profileEl = document.getElementById('eq-profile');
+    const sumEl = document.getElementById('eq-sum');
+    const interpEl = document.getElementById('eq-interp');
+
+    if (!complete) {
+      const partial = vals.map(v => v === null ? '_' : v).join('–');
+      profileEl.textContent = partial;
+      profileEl.style.color = 'var(--muted)';
+      sumEl.textContent = '—';
+      interpEl.textContent = `${eqFields.length - vals.filter(v => v !== null).length} dimension(s) remaining`;
+      interpEl.className = 'interp';
+    } else {
+      const profile = vals.join('–');
+      const sum = vals.reduce((s, v) => s + v, 0);
+      profileEl.textContent = profile;
+      profileEl.style.color = 'var(--brand)';
+      sumEl.textContent = sum + ' / 25';
+      let label = '';
+      if (profile === '1–1–1–1–1') label = 'Full health on all dimensions';
+      else if (sum <= 8)       label = 'Mild overall impairment';
+      else if (sum <= 14)      label = 'Moderate overall impairment';
+      else                     label = 'Substantial overall impairment';
+      interpEl.textContent = label;
+      interpEl.className = 'interp';
+    }
+    eqVasOut.textContent = eqVas.value + ' / 100';
+  }
+  eqFields.forEach(name => {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(el => {
+      el.addEventListener('change', updateEQ);
+    });
+  });
+  eqVas.addEventListener('input', () => {
+    eqVasValue.textContent = eqVas.value;
+    eqVasOut.textContent = eqVas.value + ' / 100';
+  });
+
+  // ---------- Copy / Reset ----------
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const which = btn.dataset.copy;
+      const today = new Date().toISOString().slice(0, 10);
+      let text;
+      if (which === 'lars') {
+        const total = document.getElementById('lars-total').textContent;
+        const interp = document.getElementById('lars-interp').textContent || '';
+        text = `LARS Score (${today}): ${total} — ${interp}`;
+      } else if (which === 'wexner') {
+        const total = document.getElementById('w-total').textContent;
+        const interp = document.getElementById('w-interp').textContent || '';
+        text = `Wexner Score (${today}): ${total} / 20 — ${interp}`;
+      } else if (which === 'eq5d') {
+        const profile = document.getElementById('eq-profile').textContent;
+        const sum = document.getElementById('eq-sum').textContent;
+        const vas = eqVas.value;
+        text = `EQ-5D-5L (${today}): Health State ${profile} [Mob-SC-UA-Pain-Anx] | Sum ${sum} | VAS ${vas}/100`;
+      }
+      copyToClipboard(text);
+    });
+  });
+
+  document.querySelectorAll('[data-reset]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const which = btn.dataset.reset;
+      const panel = document.getElementById('panel-' + which);
+      panel.querySelectorAll('input[type="radio"]').forEach(el => el.checked = false);
+      if (which === 'eq5d') {
+        eqVas.value = 50;
+        eqVasValue.textContent = '50';
+      }
+      if (which === 'lars') updateLARS();
+      if (which === 'wexner') updateWexner();
+      if (which === 'eq5d') updateEQ();
+    });
+  });
+
+  // Initial state
+  updateLARS();
+  updateWexner();
+  updateEQ();
+})();
+</script>
+
+</body>
+</html>
